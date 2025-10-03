@@ -2,6 +2,7 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import path from "path";
 import cors from "cors";
+import fs from "fs";
 
 import authRoutes from "./routes/auth.route.js";
 import movieRoutes from "./routes/movie.route.js";
@@ -54,13 +55,44 @@ if (process.env.NODE_ENV === "production") {
   const frontendPath = path.join(__dirname, "../frontend/dist");
   console.log("Frontend dist path:", frontendPath);
   
+  // Check if frontend dist exists
+  if (fs.existsSync(frontendPath)) {
+    console.log("✅ Frontend dist directory exists");
+    const indexPath = path.join(frontendPath, "index.html");
+    if (fs.existsSync(indexPath)) {
+      console.log("✅ index.html exists");
+    } else {
+      console.log("❌ index.html not found");
+    }
+  } else {
+    console.log("❌ Frontend dist directory not found");
+  }
+  
   app.use(express.static(frontendPath));
 
   // Catch all handler for React app
   app.get("*", (req, res) => {
     console.log("Serving React app for:", req.path);
     const indexPath = path.join(frontendPath, "index.html");
-    res.sendFile(indexPath);
+    
+    if (fs.existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      console.log("❌ index.html not found, serving 404");
+      res.status(404).json({ 
+        error: "Frontend not built properly",
+        path: indexPath,
+        exists: fs.existsSync(indexPath)
+      });
+    }
+  });
+} else {
+  // Development mode - just serve a simple message
+  app.get("*", (req, res) => {
+    res.json({ 
+      message: "Development mode - frontend not served",
+      path: req.path 
+    });
   });
 }
 

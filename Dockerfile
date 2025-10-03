@@ -15,8 +15,20 @@ RUN cd frontend && npm install
 # Copy source code
 COPY . .
 
-# Build frontend
-RUN cd frontend && npm run build
+# Build frontend with verbose output
+RUN echo "Building frontend..." && \
+    cd frontend && \
+    npm run build && \
+    echo "Frontend build completed" && \
+    ls -la dist/ && \
+    echo "Checking if index.html exists..." && \
+    ls -la dist/index.html
+
+# Verify build output
+RUN echo "Verifying build output..." && \
+    ls -la /app/frontend/dist/ && \
+    test -f /app/frontend/dist/index.html && \
+    echo "✅ index.html found"
 
 # Expose port
 EXPOSE 10000
