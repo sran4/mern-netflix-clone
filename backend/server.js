@@ -18,10 +18,30 @@ const app = express();
 const PORT = ENV_VARS.PORT;
 const __dirname = path.resolve();
 
+// Security headers for HTTPS
+app.use((req, res, next) => {
+  if (ENV_VARS.NODE_ENV === "production") {
+    // Force HTTPS
+    if (req.header('x-forwarded-proto') !== 'https') {
+      res.redirect(`https://${req.header('host')}${req.url}`);
+      return;
+    }
+    
+    // Security headers
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  }
+  next();
+});
+
 app.use(
   cors({
-    origin:
-      ENV_VARS.NODE_ENV === "production" ? false : "http://localhost:5173",
+    origin: ENV_VARS.NODE_ENV === "production" 
+      ? ["https://*.onrender.com", "https://netflix-clone.onrender.com"] 
+      : "http://localhost:5173",
     credentials: true,
   })
 );
