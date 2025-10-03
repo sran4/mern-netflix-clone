@@ -18,8 +18,12 @@ COPY . .
 # Build frontend
 RUN cd frontend && npm run build
 
-# Expose port
+# Expose port (Railway uses PORT environment variable)
 EXPOSE 10000
+
+# Set environment
+ENV NODE_ENV=production
+ENV PORT=10000
 
 # Start the application
 CMD ["npm", "start"]

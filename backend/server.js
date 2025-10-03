@@ -40,13 +40,18 @@ app.use((req, res, next) => {
 app.use(
   cors({
     origin: ENV_VARS.NODE_ENV === "production" 
-      ? ["https://*.onrender.com", "https://netflix-clone.onrender.com"] 
+      ? ["https://*.railway.app", "https://*.onrender.com"] 
       : "http://localhost:5173",
     credentials: true,
   })
 );
 app.use(express.json()); // will allow us to parse req.body
 app.use(cookieParser());
+
+// Health check endpoint
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "OK", timestamp: new Date().toISOString() });
+});
 
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/movie", protectRoute, movieRoutes);
@@ -79,5 +84,6 @@ if (ENV_VARS.NODE_ENV === "production") {
 
 app.listen(PORT, () => {
   console.log("Server started at http://localhost:" + PORT);
+  console.log("Health check available at /health");
   connectDB();
 });
