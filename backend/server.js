@@ -54,68 +54,50 @@ app.use("/api/v1/search", protectRoute, searchRoutes);
 if (process.env.NODE_ENV === "production") {
   console.log("Production mode: Setting up static file serving");
   
-  // Try multiple possible paths for frontend dist
-  const possiblePaths = [
-    path.join(__dirname, "../frontend/dist"),
-    path.join(__dirname, "frontend/dist"),
-    path.join(__dirname, "dist"),
-    "/app/frontend/dist"
-  ];
+  // Use the absolute path we know works
+  const frontendPath = "/app/frontend/dist";
+  console.log("Using frontend path:", frontendPath);
   
-  let frontendPath = null;
+  // Check if index.html exists
+  const indexPath = path.join(frontendPath, "index.html");
+  console.log("Looking for index.html at:", indexPath);
   
-  for (const testPath of possiblePaths) {
-    console.log("Checking path:", testPath);
-    if (fs.existsSync(testPath)) {
-      console.log("✅ Found frontend dist at:", testPath);
-      frontendPath = testPath;
-      break;
-    } else {
-      console.log("❌ Path not found:", testPath);
-    }
-  }
-  
-  if (frontendPath) {
-    console.log("Using frontend path:", frontendPath);
-    
-    // Check if index.html exists
-    const indexPath = path.join(frontendPath, "index.html");
-    if (fs.existsSync(indexPath)) {
-      console.log("✅ index.html exists at:", indexPath);
-    } else {
-      console.log("❌ index.html not found at:", indexPath);
-      console.log("Files in dist directory:", fs.readdirSync(frontendPath));
-    }
-    
-    app.use(express.static(frontendPath));
-
-    // Catch all handler for React app
-    app.get("*", (req, res) => {
-      console.log("Serving React app for:", req.path);
-      const indexPath = path.join(frontendPath, "index.html");
-      
-      if (fs.existsSync(indexPath)) {
-        res.sendFile(indexPath);
-      } else {
-        console.log("❌ index.html not found, serving 404");
-        res.status(404).json({ 
-          error: "Frontend not built properly",
-          path: indexPath,
-          exists: fs.existsSync(indexPath),
-          frontendPath: frontendPath,
-          filesInDist: fs.existsSync(frontendPath) ? fs.readdirSync(frontendPath) : "dist folder not found"
-        });
-      }
-    });
+  if (fs.existsSync(indexPath)) {
+    console.log("✅ index.html exists at:", indexPath);
+    console.log("Files in dist directory:", fs.readdirSync(frontendPath));
   } else {
-    console.log("❌ No frontend dist directory found");
-    app.get("*", (req, res) => {
-      res.status(404).json({ 
-        error: "Frontend dist directory not found",
-        checkedPaths: possiblePaths
-      });
-    });
+    console.log("❌ index.html not found at:", indexPath);
+    console.log("Files in dist directory:", fs.existsSync(frontendPath) ? fs.readdirSync(frontendPath) : "dist folder not found");
   }
+  
+  // Serve static files
+  app.use(express.static(frontendPath));
+
+  // Catch all handler for React app
+  app.get("*", (req, res) => {
+    console.log("Serving React app for:", req.path);
+    
+    // Skip API routes
+    if (req.path.startsWith("/api/")) {
+      return res.status(404).json({ success: false, message: "API endpoint not found" });
+    }
+    
+    const indexPath = path.join(frontendPath, "index.html");
+    
+    if (fs.existsSync(indexPath)) {
+      console.log("✅ Serving index.html");
+      res.sendFile(indexPath);
+    } else {
+      console.log("❌ index.html not found, serving 404");
+      res.status(404).json({ 
+        error: "Frontend not built properly",
+        path: indexPath,
+        exists: fs.existsSync(indexPath),
+        frontendPath: frontendPath,
+        filesInDist: fs.existsSync(frontendPath) ? fs.readdirSync(frontendPath) : "dist folder not found"
+      });
+    }
+  });
 } else {
   // Development mode - just serve a simple message
   app.get("*", (req, res) => {
