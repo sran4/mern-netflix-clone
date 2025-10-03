@@ -6,6 +6,7 @@
 	"scripts": {
         "dev": "cross-env NODE_ENV=development nodemon backend/server.js",
 		"start": "NODE_ENV=production node ./backend/server.js",
+		"start:railway": "sh start.sh",
 		"build": "npm run build:frontend",
 		"build:frontend": "cd frontend && npm install && npm run build"
 	},

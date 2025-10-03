@@ -15,75 +15,72 @@ import { protectRoute } from "./middleware/protectRoute.js";
 
 const app = express();
 
-const PORT = ENV_VARS.PORT;
+// Get port from environment or default to 10000
+const PORT = process.env.PORT || 10000;
 const __dirname = path.resolve();
 
-// Security headers for HTTPS
-app.use((req, res, next) => {
-  if (ENV_VARS.NODE_ENV === "production") {
-    // Force HTTPS
-    if (req.header('x-forwarded-proto') !== 'https') {
-      res.redirect(`https://${req.header('host')}${req.url}`);
-      return;
-    }
-    
-    // Security headers
-    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('X-Frame-Options', 'DENY');
-    res.setHeader('X-XSS-Protection', '1; mode=block');
-    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  }
-  next();
-});
+console.log("Starting server with PORT:", PORT);
+console.log("NODE_ENV:", process.env.NODE_ENV);
 
-app.use(
-  cors({
-    origin: ENV_VARS.NODE_ENV === "production" 
-      ? ["https://*.railway.app", "https://*.onrender.com"] 
-      : "http://localhost:5173",
-    credentials: true,
-  })
-);
-app.use(express.json()); // will allow us to parse req.body
+// Basic CORS for Railway
+app.use(cors({
+  origin: true,
+  credentials: true,
+}));
+
+app.use(express.json());
 app.use(cookieParser());
 
-// Health check endpoint
+// Health check endpoint - should be first
 app.get("/health", (req, res) => {
-  res.status(200).json({ status: "OK", timestamp: new Date().toISOString() });
+  console.log("Health check requested");
+  res.status(200).json({ 
+    status: "OK", 
+    timestamp: new Date().toISOString(),
+    port: PORT,
+    env: process.env.NODE_ENV 
+  });
 });
 
+// API routes
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/movie", protectRoute, movieRoutes);
 app.use("/api/v1/tv", protectRoute, tvRoutes);
 app.use("/api/v1/search", protectRoute, searchRoutes);
 
-if (ENV_VARS.NODE_ENV === "production") {
+// Serve static files in production
+if (process.env.NODE_ENV === "production") {
   console.log("Production mode: Setting up static file serving");
-  console.log("Frontend dist path:", path.join(__dirname, "../frontend/dist"));
+  const frontendPath = path.join(__dirname, "../frontend/dist");
+  console.log("Frontend dist path:", frontendPath);
+  
+  app.use(express.static(frontendPath));
 
-  // Serve static files from the React app build
-  app.use(express.static(path.join(__dirname, "../frontend/dist")));
-
-  // Catch all handler: send back React's index.html file for any non-API routes
+  // Catch all handler for React app
   app.get("*", (req, res) => {
-    console.log("Handling request for:", req.path);
-
-    // Don't serve React app for API routes
-    if (req.path.startsWith("/api/")) {
-      return res
-        .status(404)
-        .json({ success: false, message: "API endpoint not found" });
-    }
-
-    const indexPath = path.resolve(__dirname, "../frontend/dist/index.html");
-    console.log("Serving index.html from:", indexPath);
+    console.log("Serving React app for:", req.path);
+    const indexPath = path.join(frontendPath, "index.html");
     res.sendFile(indexPath);
   });
 }
 
-app.listen(PORT, () => {
-  console.log("Server started at http://localhost:" + PORT);
-  console.log("Health check available at /health");
-  connectDB();
+// Start server
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`✅ Server started successfully on port ${PORT}`);
+  console.log(`✅ Health check available at http://0.0.0.0:${PORT}/health`);
+  console.log(`✅ Environment: ${process.env.NODE_ENV}`);
+  
+  // Connect to database (don't block server startup)
+  connectDB().catch(err => {
+    console.error("Database connection failed:", err);
+  });
+});
+
+// Handle server errors
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+});
+
+process.on('unhandledRejection', (err) => {
+  console.error('Unhandled Rejection:', err);
 });
