@@ -16,19 +16,28 @@ RUN cd frontend && npm install
 COPY . .
 
 # Build frontend with verbose output
-RUN echo "Building frontend..." && \
+RUN echo "=== Building frontend ===" && \
     cd frontend && \
+    echo "Current directory: $(pwd)" && \
+    echo "Files in frontend directory:" && \
+    ls -la && \
+    echo "Running npm run build..." && \
     npm run build && \
-    echo "Frontend build completed" && \
+    echo "=== Frontend build completed ===" && \
+    echo "Files in dist directory:" && \
     ls -la dist/ && \
     echo "Checking if index.html exists..." && \
-    ls -la dist/index.html
+    test -f dist/index.html && echo "✅ index.html found" || echo "❌ index.html not found"
 
-# Verify build output
-RUN echo "Verifying build output..." && \
-    ls -la /app/frontend/dist/ && \
-    test -f /app/frontend/dist/index.html && \
-    echo "✅ index.html found"
+# Verify build output from app root
+RUN echo "=== Verifying build from app root ===" && \
+    echo "Current directory: $(pwd)" && \
+    echo "Files in app directory:" && \
+    ls -la && \
+    echo "Checking frontend/dist..." && \
+    ls -la frontend/dist/ && \
+    echo "Checking if index.html exists at /app/frontend/dist/index.html..." && \
+    test -f frontend/dist/index.html && echo "✅ index.html found at /app/frontend/dist/index.html" || echo "❌ index.html not found"
 
 # Expose port
 EXPOSE 10000

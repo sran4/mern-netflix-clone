@@ -22,6 +22,7 @@ const __dirname = path.resolve();
 
 console.log("Starting server with PORT:", PORT);
 console.log("NODE_ENV:", process.env.NODE_ENV);
+console.log("__dirname:", __dirname);
 
 // Basic CORS for Railway
 app.use(cors({
@@ -52,40 +53,69 @@ app.use("/api/v1/search", protectRoute, searchRoutes);
 // Serve static files in production
 if (process.env.NODE_ENV === "production") {
   console.log("Production mode: Setting up static file serving");
-  const frontendPath = path.join(__dirname, "../frontend/dist");
-  console.log("Frontend dist path:", frontendPath);
   
-  // Check if frontend dist exists
-  if (fs.existsSync(frontendPath)) {
-    console.log("✅ Frontend dist directory exists");
-    const indexPath = path.join(frontendPath, "index.html");
-    if (fs.existsSync(indexPath)) {
-      console.log("✅ index.html exists");
+  // Try multiple possible paths for frontend dist
+  const possiblePaths = [
+    path.join(__dirname, "../frontend/dist"),
+    path.join(__dirname, "frontend/dist"),
+    path.join(__dirname, "dist"),
+    "/app/frontend/dist"
+  ];
+  
+  let frontendPath = null;
+  
+  for (const testPath of possiblePaths) {
+    console.log("Checking path:", testPath);
+    if (fs.existsSync(testPath)) {
+      console.log("✅ Found frontend dist at:", testPath);
+      frontendPath = testPath;
+      break;
     } else {
-      console.log("❌ index.html not found");
+      console.log("❌ Path not found:", testPath);
     }
-  } else {
-    console.log("❌ Frontend dist directory not found");
   }
   
-  app.use(express.static(frontendPath));
-
-  // Catch all handler for React app
-  app.get("*", (req, res) => {
-    console.log("Serving React app for:", req.path);
-    const indexPath = path.join(frontendPath, "index.html");
+  if (frontendPath) {
+    console.log("Using frontend path:", frontendPath);
     
+    // Check if index.html exists
+    const indexPath = path.join(frontendPath, "index.html");
     if (fs.existsSync(indexPath)) {
-      res.sendFile(indexPath);
+      console.log("✅ index.html exists at:", indexPath);
     } else {
-      console.log("❌ index.html not found, serving 404");
-      res.status(404).json({ 
-        error: "Frontend not built properly",
-        path: indexPath,
-        exists: fs.existsSync(indexPath)
-      });
+      console.log("❌ index.html not found at:", indexPath);
+      console.log("Files in dist directory:", fs.readdirSync(frontendPath));
     }
-  });
+    
+    app.use(express.static(frontendPath));
+
+    // Catch all handler for React app
+    app.get("*", (req, res) => {
+      console.log("Serving React app for:", req.path);
+      const indexPath = path.join(frontendPath, "index.html");
+      
+      if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+      } else {
+        console.log("❌ index.html not found, serving 404");
+        res.status(404).json({ 
+          error: "Frontend not built properly",
+          path: indexPath,
+          exists: fs.existsSync(indexPath),
+          frontendPath: frontendPath,
+          filesInDist: fs.existsSync(frontendPath) ? fs.readdirSync(frontendPath) : "dist folder not found"
+        });
+      }
+    });
+  } else {
+    console.log("❌ No frontend dist directory found");
+    app.get("*", (req, res) => {
+      res.status(404).json({ 
+        error: "Frontend dist directory not found",
+        checkedPaths: possiblePaths
+      });
+    });
+  }
 } else {
   // Development mode - just serve a simple message
   app.get("*", (req, res) => {
