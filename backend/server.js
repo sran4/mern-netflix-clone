@@ -18,23 +18,6 @@ const app = express();
 const PORT = ENV_VARS.PORT;
 const __dirname = path.resolve();
 
-// Build frontend in production if dist folder doesn't exist
-if (ENV_VARS.NODE_ENV === "production") {
-  const frontendDistPath = path.join(__dirname, "../frontend/dist");
-  console.log("Checking frontend dist path:", frontendDistPath);
-  
-  try {
-    // Check if dist folder exists
-    const fs = await import('fs');
-    if (!fs.existsSync(frontendDistPath)) {
-      console.log("Frontend dist not found, building...");
-      execSync("npm run build", { cwd: path.join(__dirname, ".."), stdio: 'inherit' });
-    }
-  } catch (error) {
-    console.error("Error building frontend:", error);
-  }
-}
-
 app.use(
   cors({
     origin:
