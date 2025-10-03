@@ -2,7 +2,7 @@ services:
   - type: web
     name: netflix-clone
     env: node
-    buildCommand: npm install && cd frontend && npm install && npm run build && cd ..
+    buildCommand: npm install && npm install --prefix frontend && npm run build --prefix frontend
     startCommand: npm start
     envVars:
       - key: NODE_ENV
@@ -13,3 +13,5 @@ services:
         sync: false
       - key: TMDB_API_KEY
         sync: false
+      - key: PORT
+        value: 10000
